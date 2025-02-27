@@ -56,4 +56,26 @@ def search_units(query, df, columns_to_search):
                     part_number = row.get('Part', 'N/A')
                     key_words = row.get('Vocabulary Words', 'N/A')
 
-                    if "Skill" in c
+                    if "Skill" in col:  # ✅ Syntax fixed
+                        result_text = (
+                            f"**Concept Matched**: {match[0]} "
+                            f"(RH{rh_level}, Unit {unit_number} - {unit_name}, Part {part_number})"
+                        )
+                    else:
+                        result_text = (
+                            f"**Topic Matched**: {col} in RH{rh_level}, Unit {unit_number} - {unit_name}, "
+                            f"Part {part_number} - **Key Words**: {key_words}"
+                        )
+                    
+                    results.append(result_text)
+
+    return results[:5]  # Limit to top 5 results
+
+# Display search results
+if query:
+    results = search_units(query, df, columns_to_search)
+    if results:
+        st.write("### Search Results:")
+        st.markdown("\n".join([f"- {result}" for result in results]))
+    else:
+        st.write("No relevant units found. Try a different topic or learning objective.")
