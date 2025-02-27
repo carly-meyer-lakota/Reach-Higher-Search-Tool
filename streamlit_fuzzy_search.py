@@ -6,7 +6,7 @@ from fuzzywuzzy import process
 
 # Download WordNet if not already present
 nltk.download('wordnet')
-nltk.download('omw-1.4')  # Improves synonym searches
+nltk.download('omw-1.4')
 
 # Load the dataset
 @st.cache_data
@@ -14,7 +14,7 @@ def load_data():
     file_path = "reach_higher_curriculum_all_units.csv"
     df = pd.read_csv(file_path)
     df.columns = df.columns.str.strip()  # Remove leading/trailing spaces
-    return df
+    return df.fillna('')  # Replace NaN with empty strings for searching
 
 df = load_data()
 
@@ -47,4 +47,17 @@ def search_units(query, df, columns_to_search):
         for col in columns_to_search:
             matches = process.extract(word, df[col].dropna(), limit=5)
             for match in matches:
- 
+                if match[1] > 70:  # Only consider strong matches
+                    row = df[df[col] == match[0]].iloc[0]  # Select the first matching row
+
+                    rh_level = row.get('RH Level', 'N/A')
+                    unit_number = row.get('Unit', 'N/A')
+                    unit_name = row.get('Unit Name', 'N/A')
+                    part_number = row.get('Part', 'N/A')
+                    key_words = row.get('Vocabulary Words', 'N/A')
+
+                    result_text = f"**Match in {col}**: {match[0]} (RH{rh_level}, Unit {unit_number} - {unit_name}, Part {part_number})"
+                    if "Skill" not in col:
+                        result_text += f" - **Key Words**: {key_words}"
+                    
+                    results.append(r
