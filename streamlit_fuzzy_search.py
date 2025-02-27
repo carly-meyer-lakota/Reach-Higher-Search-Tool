@@ -6,7 +6,9 @@ from fuzzywuzzy import process
 @st.cache_data
 def load_data():
     file_path = "reach_higher_curriculum_all_units.csv"
-    return pd.read_csv(file_path)
+    df = pd.read_csv(file_path)
+    df.columns = df.columns.str.strip()  # Remove leading/trailing spaces
+    return df
 
 df = load_data()
 
@@ -45,16 +47,17 @@ def search_units(query, df, skill_columns):
             matches = process.extract(word, df[col], limit=5)
             for match in matches:
                 if match[1] > 70:  # Adjust the threshold as needed
-                    row = df[df[col] == match[0]].iloc[0]
-                    rh_level = row['RH Level']
-                    unit_number = row['Unit Number']
-                    unit_title = row['Unit Title']
-                    part_number = row['Part Number']
-                    if "Skill" in col:
-                        results.append(f"Skill Matched: {match[0]} (RH{rh_level}, Unit {unit_number} \"{unit_title}:\" Part {part_number})")
-                    else:
-                        results.append(f"Topic Matched: {col} in RH{rh_level}, Unit {unit_number} \"{unit_title}-Key Words: {', '.join(row[col].split())}")
-
+                    row = df[df[col] == match[0]]
+                    if not row.empty:
+                        row = row.iloc[0]
+                        rh_level = row.get('RH Level', 'N/A')
+                        unit_number = row.get('Unit Number', 'N/A')
+                        unit_name = row.get('Unit Name', 'N/A')
+                        part_number = row.get('Part Number', 'N/A')
+                        if "Skill" in col:
+                            results.append(f"Skill Matched: {match[0]} (RH{rh_level}, Unit {unit_number} - {unit_name}, Part {part_number})")
+                        else:
+                            results.append(f"Topic Matched: {col} in RH{rh_level}, Unit {unit_number} - {unit_name} - Key Words: {', '.join(row[col].split())}")
     return results[:5]
 
 # Display search results
