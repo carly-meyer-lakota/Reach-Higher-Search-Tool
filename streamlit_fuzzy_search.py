@@ -39,8 +39,10 @@ def fuzzy_search(query, search_type):
         
         if match_scores:
             avg_score = sum(match_scores) / len(match_scores)
-            skill_text = f"{best_skill_match[0]}: {best_skill_match[2]} - " if best_skill_match[2] else ""
-            results.append((avg_score, skill_text, row.get("RH Level", "N/A"), row.get("Unit", "N/A"), row.get("Vocabulary Words", "N/A")))
+            if search_type == "Learning Objective" and best_skill_match[2]:
+                results.append((avg_score, f"{best_skill_match[0]}: {best_skill_match[2]}", row.get("RH Level", "N/A"), row.get("Unit", "N/A")))
+            elif search_type == "Topic":
+                results.append((avg_score, "", row.get("RH Level", "N/A"), row.get("Unit", "N/A"), row.get("Vocabulary Words", "N/A")))
     
     return sorted(results, reverse=True, key=lambda x: x[0])
 
@@ -50,10 +52,12 @@ if query:
     if matches:
         st.subheader("Top 5 Relevant Curriculum Matches:")
         match_list = []
-        for score, skill_text, level, unit, vocab in matches[:5]:
-            if search_type == "Learning Objective" and skill_text:
-                match_list.append(f"- **{skill_text}found in RH{level}, Unit {unit}.**")
+        for match in matches[:5]:
+            if search_type == "Learning Objective":
+                _, skill_text, level, unit = match
+                match_list.append(f"- **{skill_text}, found in RH{level}, Unit {unit}.**")
             else:
+                _, _, level, unit, vocab = match
                 match_list.append(f"- **RH Level:** {level}, **Unit:** {unit}")
                 match_list.append("  **Vocabulary Words:**")
                 match_list.extend([f"  - {word.strip()}" for word in vocab.split(',')])
