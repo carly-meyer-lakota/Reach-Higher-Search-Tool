@@ -4,7 +4,7 @@ import nltk
 from nltk.corpus import wordnet
 from fuzzywuzzy import process
 
-# Download WordNet if not already present
+# Ensure necessary NLTK resources are available
 nltk.download('wordnet')
 nltk.download('omw-1.4')
 
@@ -56,8 +56,4 @@ def search_units(query, df, columns_to_search):
                     part_number = row.get('Part', 'N/A')
                     key_words = row.get('Vocabulary Words', 'N/A')
 
-                    result_text = f"**Match in {col}**: {match[0]} (RH{rh_level}, Unit {unit_number} - {unit_name}, Part {part_number})"
-                    if "Skill" not in col:
-                        result_text += f" - **Key Words**: {key_words}"
-                    
-                    results.append(r
+                    if "Skill" in c
