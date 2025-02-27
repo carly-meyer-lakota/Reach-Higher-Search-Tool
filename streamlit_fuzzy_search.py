@@ -72,7 +72,9 @@ def fuzzy_search(query):
         
         if match_scores:
             avg_score = sum(match_scores) / len(match_scores)
-            results.append((avg_score, best_skill_match, best_vocab_match, row.get("RH Level", "N/A"), row.get("Unit", "N/A")))
+            matched_category = best_skill_match[0] if best_skill_match[1] > best_vocab_match[1] else best_vocab_match[0]
+            matched_content = best_skill_match[2] if best_skill_match[1] > best_vocab_match[1] else best_vocab_match[2]
+            results.append((avg_score, matched_category, matched_content, row.get("RH Level", "N/A"), row.get("Unit", "N/A")))
     
     return sorted(results, reverse=True, key=lambda x: x[0]), learning_objective, related_words
 
@@ -92,12 +94,14 @@ if query:
             {
                 "RH Level": match[3],
                 "Unit": match[4],
-                "Matched Category": match[1][0] if match[1][1] > match[2][1] else match[2][0],
-                "Matched Content": match[1][2] if match[1][1] > match[2][1] else match[2][2]
+                "Matched Skill": match[1],
+                "Matched Content": match[2]
             }
             for match in matches[:5]
         ])
-        st.dataframe(results_df)
+        
+        # Display table without row numbers
+        st.dataframe(results_df.style.hide(axis="index"))
     
     else:
         st.write("No relevant matches found.")
