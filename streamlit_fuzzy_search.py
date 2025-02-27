@@ -14,8 +14,7 @@ df = load_data()
 st.title("Reach Higher Curriculum Search")
 st.write("Find relevant units and parts for your teaching topics or learning objectives.")
 
-# User input for search type
-search_type = st.radio("Are you searching for a topic or a learning objective?", ("Topic", "Learning Objective"))
+# User input for search query
 query = st.text_input("Enter your topic or learning objective:")
 
 # Define relevant columns
@@ -32,9 +31,9 @@ def generate_related_words(topic):
     return related_words.get(topic.lower(), [])
 
 # Search function
-def fuzzy_search(query, search_type):
+def fuzzy_search(query):
     results = []
-    related_words = generate_related_words(query) if search_type == "Topic" else []
+    related_words = generate_related_words(query)
     search_terms = [query] + related_words
     
     for index, row in df.iterrows():
@@ -48,7 +47,7 @@ def fuzzy_search(query, search_type):
                 if score:
                     match_scores.append(score[1])
                     
-                    if search_type == "Learning Objective" and col in skill_columns:
+                    if col in skill_columns:
                         if term.lower() in str(row[col]).lower():
                             best_skill_match = (col, 100, row[col])  # Exact match
                             exact_match_found = True
@@ -57,25 +56,21 @@ def fuzzy_search(query, search_type):
         
         if match_scores:
             avg_score = sum(match_scores) / len(match_scores)
-            if search_type == "Learning Objective" and best_skill_match[2]:
-                results.append((best_skill_match[1], f"{best_skill_match[0]}: {best_skill_match[2]}", row.get("RH Level", "N/A"), row.get("Unit", "N/A")))
-            elif search_type == "Topic":
-                results.append((avg_score, "", row.get("RH Level", "N/A"), row.get("Unit", "N/A"), row.get("Vocabulary Words", "N/A")))
+            results.append((avg_score, best_skill_match, row.get("RH Level", "N/A"), row.get("Unit", "N/A"), row.get("Vocabulary Words", "N/A")))
     
     return sorted(results, reverse=True, key=lambda x: x[0])
 
 # Display results
 if query:
-    matches = fuzzy_search(query, search_type)
+    matches = fuzzy_search(query)
     if matches:
         st.subheader("Top 5 Relevant Curriculum Matches:")
         match_list = []
         for match in matches[:5]:
-            if search_type == "Learning Objective":
-                _, skill_text, level, unit = match
-                match_list.append(f"- **{skill_text}, found in RH{level}, Unit {unit}.**")
+            avg_score, best_skill_match, level, unit, vocab = match
+            if best_skill_match[2]:
+                match_list.append(f"- **{best_skill_match[0]}: {best_skill_match[2]}, found in RH{level}, Unit {unit}.**")
             else:
-                _, _, level, unit, vocab = match
                 match_list.append(f"- **RH Level:** {level}, **Unit:** {unit}")
                 match_list.append("  **Vocabulary Words:**")
                 match_list.extend([f"  - {word.strip()}" for word in vocab.split(',')])
