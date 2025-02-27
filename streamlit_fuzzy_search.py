@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from fuzzywuzzy import process
+from nltk.corpus import wordnet
 
 # Load the dataset
 @st.cache_data
@@ -21,21 +22,20 @@ query = st.text_input("Enter your topic or learning objective:")
 columns_to_search = df.columns.tolist()
 skill_columns = [col for col in columns_to_search if "Skill" in col and "Phonics" not in col]
 
-# Function to generate related words for a topic-based search
+# Dynamically generate related words using WordNet
 def generate_related_words(topic):
-    related_words = {
-        "frogs": ["animal", "amphibian", "egg", "tadpole", "water", "pond", "jump"],
-        "weather": ["rain", "storm", "temperature", "climate", "wind", "snow", "forecast"],
-        "plants": ["tree", "leaf", "flower", "photosynthesis", "roots", "stem", "sunlight"]
-    }
-    return related_words.get(topic.lower(), [])
+    synonyms = set()
+    for syn in wordnet.synsets(topic):
+        for lemma in syn.lemmas():
+            synonyms.add(lemma.name().replace("_", " "))
+    return list(synonyms)
 
-# Function to determine if the input is a learning objective
+# Check if the input is a learning objective
 def is_learning_objective(query):
     action_verbs = ["write", "describe", "compare", "analyze", "summarize", "explain", "identify"]
     return any(verb in query.lower() for verb in action_verbs)
 
-# Search function
+# Improved fuzzy search with weighting
 def fuzzy_search(query):
     results = []
     related_words = generate_related_words(query)
@@ -45,60 +45,56 @@ def fuzzy_search(query):
     for index, row in df.iterrows():
         match_scores = []
         best_skill_match = (None, 0, "")
-        exact_match_found = False
-        vocab_match = []
-
+        best_vocab_match = (None, 0, "")
+        
         for col in columns_to_search:
             for term in search_terms:
-                if term.lower() in str(row[col]).lower():
-                    score = 100  # Exact match
-                else:
-                    score = process.extractOne(term, str(row[col]).split(','), score_cutoff=70)
-                    score = score[1] if score else 0
+                text = str(row[col]).lower()
+                score = process.extractOne(term, [text], score_cutoff=70)
                 
                 if score:
-                    match_scores.append(score)
+                    score_value = score[1]
+                    match_scores.append(score_value)
                     
-                    if col in skill_columns:
-                        if score == 100:
-                            best_skill_match = (col, score, row[col])  # Prioritize exact match
-                            exact_match_found = True
-                        elif score > best_skill_match[1] and not exact_match_found:
-                            best_skill_match = (col, score, row[col])
-                    elif col == "Vocabulary Words" and score:
-                        vocab_match.append(score[0] if isinstance(score, tuple) else row[col])
+                    # Adjust weighting based on search type
+                    if learning_objective and col in skill_columns:
+                        score_value *= 1.5  # Boost skill-related matches
+                        if score_value > best_skill_match[1]:
+                            best_skill_match = (col, score_value, row[col])
+                    
+                    elif not learning_objective and col == "Vocabulary Words":
+                        score_value *= 1.5  # Boost vocabulary matches for topic searches
+                        if score_value > best_vocab_match[1]:
+                            best_vocab_match = (col, score_value, row[col])
         
         if match_scores:
             avg_score = sum(match_scores) / len(match_scores)
-            results.append((avg_score, best_skill_match, row.get("RH Level", "N/A"), row.get("Unit", "N/A"), vocab_match))
+            results.append((avg_score, best_skill_match, best_vocab_match, row.get("RH Level", "N/A"), row.get("Unit", "N/A")))
     
     return sorted(results, reverse=True, key=lambda x: x[0]), learning_objective, related_words
 
 # Display results
 if query:
     matches, learning_objective, related_words = fuzzy_search(query)
+    
     if matches:
         st.subheader("Top 5 Relevant Curriculum Matches:")
-        match_list = []
         
+        # Display related words used in search
         if related_words:
-            match_list.append("**Words Related to Your Search that were used to generate this list:**")
-            match_list.extend([f"  - {word}" for word in related_words])
-            match_list.append("")
+            st.write("**Words Related to Your Search:** " + ", ".join(related_words))
         
-        if learning_objective:
-            # Learning Objective Search Output
-            for match in matches[:5]:
-                avg_score, best_skill_match, level, unit, _ = match
-                if best_skill_match[2]:
-                    match_list.append(f"- **{best_skill_match[0]}: {best_skill_match[2]}, found in RH{level}, Unit {unit}.**")
-        else:
-            # Topic-Based Search Output
-            for match in matches[:5]:
-                avg_score, _, level, unit, vocab = match
-                match_list.append(f"- **RH Level:** {level}, **Unit:** {unit}")
-                match_list.extend([f"  - {word.strip()}" for word in vocab])
-        
-        st.markdown("\n".join(match_list))
+        # Format results as a table
+        results_df = pd.DataFrame([
+            {
+                "RH Level": match[3],
+                "Unit": match[4],
+                "Matched Category": match[1][0] if match[1][1] > match[2][1] else match[2][0],
+                "Matched Content": match[1][2] if match[1][1] > match[2][1] else match[2][2]
+            }
+            for match in matches[:5]
+        ])
+        st.dataframe(results_df)
+    
     else:
         st.write("No relevant matches found.")
