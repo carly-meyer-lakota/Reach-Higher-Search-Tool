@@ -50,16 +50,21 @@ def fuzzy_search(query):
 
         for col in columns_to_search:
             for term in search_terms:
-                score = process.extractOne(term, str(row[col]).split(','), score_cutoff=70)
+                if term.lower() in str(row[col]).lower():
+                    score = 100  # Exact match
+                else:
+                    score = process.extractOne(term, str(row[col]).split(','), score_cutoff=70)
+                    score = score[1] if score else 0
+                
                 if score:
-                    match_scores.append(score[1])
+                    match_scores.append(score)
                     
                     if col in skill_columns:
-                        if term.lower() in str(row[col]).lower():
-                            best_skill_match = (col, 100, row[col])  # Exact match
+                        if score == 100:
+                            best_skill_match = (col, score, row[col])  # Prioritize exact match
                             exact_match_found = True
-                        elif score[1] > best_skill_match[1] and not exact_match_found:
-                            best_skill_match = (col, score[1], score[0])
+                        elif score > best_skill_match[1] and not exact_match_found:
+                            best_skill_match = (col, score, row[col])
                     elif col == "Vocabulary Words":
                         vocab_match.append(score[0])
         
