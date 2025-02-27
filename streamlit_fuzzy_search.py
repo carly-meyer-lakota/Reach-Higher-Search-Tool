@@ -2,11 +2,17 @@ import streamlit as st
 import pandas as pd
 import nltk
 from nltk.corpus import wordnet
+from nltk.stem import WordNetLemmatizer
+import string
 from fuzzywuzzy import process
 
 # Ensure necessary NLTK resources are available
 nltk.download('wordnet')
 nltk.download('omw-1.4')
+nltk.download('punkt')
+
+# Initialize the lemmatizer
+lemmatizer = WordNetLemmatizer()
 
 # Load the dataset
 @st.cache_data
@@ -29,6 +35,13 @@ query = st.text_input("Enter your topic or learning objective:")
 columns_to_search = df.columns.tolist()  
 skill_columns = [col for col in columns_to_search if "Skill" in col and "Phonics" not in col]
 
+# Function to clean and normalize text
+def normalize_text(text):
+    # Remove punctuation and make lowercase
+    text = text.lower()
+    text = text.translate(str.maketrans('', '', string.punctuation))  # Remove punctuation
+    return text
+
 # Function to generate synonyms using WordNet
 def generate_related_words(word):
     synonyms = set()
@@ -37,15 +50,18 @@ def generate_related_words(word):
             synonyms.add(lemma.name().replace("_", " "))  # Replace underscores in multi-word phrases
     return list(synonyms)
 
-# Function to check for exact matches in any column
+# Function to check for exact matches in any column, using lemmatization and normalization
 def has_exact_match(query, df, columns_to_search):
-    query_words = set(query.lower().split())  # Get individual words from the query
+    query_words = set(normalize_text(query).split())  # Normalize and split query
     exact_matches = {}
 
     for col in columns_to_search:
-        col_values = df[col].dropna().str.lower()  # Work with lowercase values
+        # Normalize column values and apply lemmatization
+        col_values = df[col].dropna().apply(str).apply(normalize_text)
+
         for value in col_values:
-            value_words = set(value.split())  # Get individual words from the column value
+            # Apply lemmatization to each word in the column value
+            value_words = set(lemmatizer.lemmatize(word) for word in value.split())
             if query_words & value_words:  # If there's an intersection of words
                 exact_matches[col] = exact_matches.get(col, set()) | value_words  # Record the matched words
 
@@ -70,7 +86,7 @@ def search_units(query, df, columns_to_search):
                 continue
 
             # If the word matches exactly in any column (except Unit Name), match with skill columns
-            if col != "Unit Name" and col in exact_matches and word.lower() in exact_matches[col]:
+            if col != "Unit Name" and col in exact_matches and normalize_text(word) in exact_matches[col]:
                 matches = process.extract(word, df[col].dropna(), limit=5)
                 for match in matches:
                     if match[1] > 70:  # Only consider strong matches
@@ -97,7 +113,7 @@ def search_units(query, df, columns_to_search):
     
     # Check Unit Name only if the word is specifically found in the Unit Name column
     for word in all_words:
-        if word.lower() in exact_matches.get("Unit Name", set()):
+        if normalize_text(word) in exact_matches.get("Unit Name", set()):
             matches = process.extract(word, df["Unit Name"].dropna(), limit=5)
             for match in matches:
                 if match[1] > 70:  # Only consider strong matches
