@@ -10,6 +10,9 @@ def load_data():
 
 df = load_data()
 
+# Debugging step: Print column names
+st.write("Columns in dataset:", df.columns.tolist())
+
 # Streamlit app setup
 st.title("Reach Higher Curriculum Search")
 st.write("Find relevant units and parts for your teaching topics or concepts.")
@@ -19,35 +22,32 @@ search_type = st.radio("Are you searching for a topic or a concept?", ("Topic", 
 query = st.text_input("Enter your topic or concept:")
 
 # Define relevant columns
-skill_columns = [col for col in df.columns if "Skill" in col]
 columns_to_search = df.columns.tolist()
 
 # Search function
-def fuzzy_search(query, search_type):
+def fuzzy_search(query):
     results = []
     for index, row in df.iterrows():
         match_scores = []
         for col in columns_to_search:
-            weight = 2 if (search_type == "Topic" and col == "Vocabulary Words") or (search_type == "Concept" and col in skill_columns) else 1
             score = process.extractOne(query, str(row[col]).split(','), score_cutoff=70)
             if score:
-                match_scores.append(score[1] * weight)
+                match_scores.append(score[1])
         
         if match_scores:
             avg_score = sum(match_scores) / len(match_scores)
-            results.append((avg_score, row["RH Level"], row["Unit"], row["Theme"], row["Vocabulary Words"]))
+            results.append((avg_score, row.get("RH Level", "N/A"), row.get("Unit", "N/A"), row.get("Vocabulary Words", "N/A")))
     
     return sorted(results, reverse=True, key=lambda x: x[0])
 
 # Display results
 if query:
-    matches = fuzzy_search(query, search_type)
+    matches = fuzzy_search(query)
     if matches:
         st.subheader("Relevant Curriculum Matches:")
-        for score, level, unit, theme, vocab in matches[:5]:
+        for score, level, unit, vocab in matches[:5]:
             st.write(f"**RH Level:** {level}")
             st.write(f"**Unit:** {unit}")
-            st.write(f"**Theme:** {theme}")
             st.write("**Vocabulary Words:**")
             st.write("\n".join([f"- {word.strip()}" for word in vocab.split(',')]))
             st.write("---")
