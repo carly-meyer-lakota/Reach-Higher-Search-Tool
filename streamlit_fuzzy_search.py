@@ -10,54 +10,46 @@ def load_data():
 
 df = load_data()
 
+# Debugging step: Print column names
+st.write("Columns in dataset:", df.columns.tolist())
+
 # Streamlit app setup
 st.title("Reach Higher Curriculum Search")
-st.write("Find relevant units and parts for your teaching topics or learning objectives.")
+st.write("Find relevant units and parts for your teaching topics or concepts.")
 
 # User input for search type
-search_type = st.radio("Are you searching for a topic or a learning objective?", ("Topic", "Learning Objective"))
-query = st.text_input("Enter your topic or learning objective:")
+search_type = st.radio("Are you searching for a topic or a concept?", ("Topic", "Concept"))
+query = st.text_input("Enter your topic or concept:")
 
 # Define relevant columns
 columns_to_search = df.columns.tolist()
-skill_columns = [col for col in columns_to_search if "Skill" in col]
 
 # Search function
-def fuzzy_search(query, search_type):
+def fuzzy_search(query):
     results = []
     for index, row in df.iterrows():
         match_scores = []
-        best_skill_match = (None, 0, "")
-        
         for col in columns_to_search:
             score = process.extractOne(query, str(row[col]).split(','), score_cutoff=70)
             if score:
                 match_scores.append(score[1])
-                
-                if search_type == "Learning Objective" and col in skill_columns and score[1] > best_skill_match[1]:
-                    best_skill_match = (col, score[1], score[0])
         
         if match_scores:
             avg_score = sum(match_scores) / len(match_scores)
-            skill_text = f"{best_skill_match[0]}: {best_skill_match[2]} - " if best_skill_match[2] else ""
-            results.append((avg_score, skill_text, row.get("RH Level", "N/A"), row.get("Unit", "N/A"), row.get("Vocabulary Words", "N/A")))
+            results.append((avg_score, row.get("RH Level", "N/A"), row.get("Unit", "N/A"), row.get("Vocabulary Words", "N/A")))
     
     return sorted(results, reverse=True, key=lambda x: x[0])
 
 # Display results
 if query:
-    matches = fuzzy_search(query, search_type)
+    matches = fuzzy_search(query)
     if matches:
-        st.subheader("Top 5 Relevant Curriculum Matches:")
-        match_list = []
-        for score, skill_text, level, unit, vocab in matches[:5]:
-            if search_type == "Learning Objective" and skill_text:
-                match_list.append(f"- **{skill_text}found in RH{level}, Unit {unit}.**")
-            else:
-                match_list.append(f"- **RH Level:** {level}, **Unit:** {unit}")
-                match_list.append("  **Vocabulary Words:**")
-                match_list.extend([f"  - {word.strip()}" for word in vocab.split(',')])
-        
-        st.markdown("\n".join(match_list))
+        st.subheader("Relevant Curriculum Matches:")
+        for score, level, unit, vocab in matches[:5]:
+            st.write(f"**RH Level:** {level}")
+            st.write(f"**Unit:** {unit}")
+            st.write("**Vocabulary Words:**")
+            st.write("\n".join([f"- {word.strip()}" for word in vocab.split(',')]))
+            st.write("---")
     else:
         st.write("No relevant matches found.")
