@@ -43,8 +43,15 @@ def search_units(query, df, columns_to_search):
     all_words = [query] + related_words  # Include query and its synonyms
     results = []
 
+    # Check if query starts with "Students will"
+    exclude_unit_name = query.lower().startswith("students will")
+
     for word in all_words:
         for col in columns_to_search:
+            # If excluding Unit Name in Skill Type for "Students will" queries, skip Unit Name matches
+            if exclude_unit_name and col == "Unit Name":
+                continue
+
             matches = process.extract(word, df[col].dropna(), limit=5)
             for match in matches:
                 if match[1] > 70:  # Only consider strong matches
@@ -67,16 +74,4 @@ def search_units(query, df, columns_to_search):
                         "RH Level": rh_level,
                         "Unit Number: Unit Name": f"{unit_number}: {unit_name}",
                         "Key Vocabulary Words": key_words_formatted
-                    })
-    
-    return results[:5]  # Limit to top 5 results
-
-# Display search results
-if query:
-    results = search_units(query, df, columns_to_search)
-    if results:
-        st.write("### Search Results:")
-        df_results = pd.DataFrame(results)
-        st.dataframe(df_results.style.set_properties(**{'white-space': 'pre-wrap'}), hide_index=True, use_container_width=True)  # Auto-adjust width, hide index, format list
-    else:
-        st.write("No relevant units found. Try a different topic or learning objective.")
+      
