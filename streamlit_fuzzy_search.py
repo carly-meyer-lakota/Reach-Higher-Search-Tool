@@ -19,7 +19,7 @@ query = st.text_input("Enter your topic or learning objective:")
 
 # Define relevant columns
 columns_to_search = df.columns.tolist()
-skill_columns = [col for col in columns_to_search if "Skill" in col]
+skill_columns = [col for col in columns_to_search if "Skill" in col and "Phonics" not in col]
 
 # Function to generate related words for a topic-based search
 def generate_related_words(topic):
