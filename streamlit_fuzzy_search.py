@@ -25,4 +25,10 @@ skill_columns = [col for col in columns_to_search if "Skill" in col and "Phonics
 def generate_related_words(topic):
     related_words = {
         "frogs": ["animal", "amphibian", "egg", "tadpole", "water", "pond", "jump"],
-        "weather": ["rain", "storm", "temperature", "climate", "wind", "snow", 
+        "weather": ["rain", "storm", "temperature", "climate", "wind", "snow", "forecast"],
+        "plants": ["tree", "leaf", "flower", "photosynthesis", "roots", "stem", "sunlight"],
+        "animals": ["mammal", "reptile", "bird", "fish", "habitat", "wildlife"],
+        "space": ["planet", "moon", "stars", "galaxy", "astronaut", "orbit"],
+        "energy": ["electricity", "solar", "wind", "power", "battery", "fuel"]
+    }  # ✅ Properly closed dictionary
+    return related_words
