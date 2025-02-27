@@ -26,11 +26,4 @@ st.write("Find relevant units and parts for your teaching topics or learning obj
 query = st.text_input("Enter your topic or learning objective:")
 
 # Define relevant columns
-columns_to_search = df.columns.tolist()
-skill_columns = [col for col in columns_to_search if "Skill" in col and "Phonics" not in col]
-
-# Function to generate synonyms using WordNet
-def generate_related_words(word):
-    synonyms = set()
-    for syn in wordnet.synsets(word):
-        for lemma in syn.lemmas
+columns_to_search = df.columns.toli
