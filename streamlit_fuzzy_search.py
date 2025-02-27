@@ -130,6 +130,7 @@ def search_units(query, df, columns_to_search):
 
 # Display search results
 if query:
+    is_theme_search = query.lower().startswith("theme is")  # Check for theme search condition here
     results = search_units(query, df, columns_to_search)
     if results:
         st.write("### Search Results:")
