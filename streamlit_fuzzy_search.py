@@ -22,20 +22,33 @@ query = st.text_input("Enter your topic or learning objective:")
 columns_to_search = df.columns.tolist()
 skill_columns = [col for col in columns_to_search if "Skill" in col]
 
+# Function to generate related words for a topic-based search
+def generate_related_words(topic):
+    related_words = {
+        "frogs": ["animal", "amphibian", "egg", "tadpole", "water", "pond", "jump"],
+        "weather": ["rain", "storm", "temperature", "climate", "wind", "snow", "forecast"],
+        "plants": ["tree", "leaf", "flower", "photosynthesis", "roots", "stem", "sunlight"]
+    }
+    return related_words.get(topic.lower(), [])
+
 # Search function
 def fuzzy_search(query, search_type):
     results = []
+    related_words = generate_related_words(query) if search_type == "Topic" else []
+    search_terms = [query] + related_words
+    
     for index, row in df.iterrows():
         match_scores = []
         best_skill_match = (None, 0, "")
         
         for col in columns_to_search:
-            score = process.extractOne(query, str(row[col]).split(','), score_cutoff=70)
-            if score:
-                match_scores.append(score[1])
-                
-                if search_type == "Learning Objective" and col in skill_columns and score[1] > best_skill_match[1]:
-                    best_skill_match = (col, score[1], score[0])
+            for term in search_terms:
+                score = process.extractOne(term, str(row[col]).split(','), score_cutoff=70)
+                if score:
+                    match_scores.append(score[1])
+                    
+                    if search_type == "Learning Objective" and col in skill_columns and score[1] > best_skill_match[1]:
+                        best_skill_match = (col, score[1], score[0])
         
         if match_scores:
             avg_score = sum(match_scores) / len(match_scores)
