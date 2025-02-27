@@ -32,9 +32,9 @@ def generate_theme_title(vocabulary_words):
         if any(keyword in vocabulary_words_lower for keyword in keywords):
             matched_topics.append(topic)
     
-    # If no matches, return a general 'Theme' based on key vocabulary terms
+    # If no matches, return None
     if not matched_topics:
-        return ", ".join(vocabulary_words[:3])  # Default theme is the first few words
+        return None
     
     return ", ".join(matched_topics)  # Return the matched topic(s)
 
@@ -112,6 +112,8 @@ def search_units(query, df, columns_to_search):
                     # If it's a theme search, generate a theme title instead of using the vocabulary words in the "Concept/Topic Matched" column
                     if is_theme_search:
                         theme_title = generate_theme_title(key_words)
+                        if theme_title is None:
+                            theme_title = query.split("theme is")[-1].strip()
                         results.append({
                             "Theme": theme_title,
                             "Skill Type": skill_type,
