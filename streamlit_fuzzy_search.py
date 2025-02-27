@@ -39,31 +39,10 @@ def generate_related_words(word):
 
 # Function to generate theme title from vocabulary words
 def generate_theme_title(vocabulary_words):
-    # Define a mapping of common vocabulary-related topics to categories
-    topic_map = {
-        "Economy": ["advertisement", "buyer", "market", "money", "pay", "seller", "reward", "cooperation", "plenty", "purpose", "accomplish"],
-        "Nature": ["plant", "animal", "ecosystem", "climate", "environment", "habitat", "growth", "species"],
-        "Technology": ["computer", "internet", "technology", "innovation", "digital", "data", "robot", "software"],
-        "Society": ["community", "society", "culture", "government", "law", "education", "history", "rights"],
-        "Science": ["experiment", "research", "theory", "hypothesis", "chemistry", "biology", "physics", "formula"],
-        "Art": ["painting", "sculpture", "music", "theater", "design", "creative", "expression", "gallery"],
-        "Health": ["medicine", "doctor", "patient", "illness", "treatment", "health", "wellness", "prevention"]
-    }
-    
-    # Flatten the vocabulary words and map them to a category if possible
-    vocabulary_words_lower = [word.lower() for word in vocabulary_words]
-    
-    # Try to match the vocabulary words with predefined topics
-    matched_topics = []
-    for topic, keywords in topic_map.items():
-        if any(keyword in vocabulary_words_lower for keyword in keywords):
-            matched_topics.append(topic)
-    
-    # If no matches, return a general "Theme" based on key vocabulary terms
-    if not matched_topics:
-        return ", ".join(vocabulary_words[:3])  # Default theme is the first few words
-    
-    return ", ".join(matched_topics)  # Return the matched topic(s)
+    # Combine the vocabulary words and generate a title (e.g., by joining them or selecting key words)
+    # For simplicity, we'll join the first few vocabulary words to create a title
+    theme_title = ", ".join(vocabulary_words[:3])  # Limit to first 3 vocabulary words
+    return theme_title
 
 # Search function using fuzzy matching with WordNet synonyms and relevance scoring
 def search_units(query, df, columns_to_search):
@@ -108,6 +87,7 @@ def search_units(query, df, columns_to_search):
                         theme_title = generate_theme_title(key_words)
                         results.append({
                             "Theme": theme_title,
+                            "Skill Type": skill_type,
                             "RH Level": rh_level,
                             "Unit Number: Unit Name": f"{unit_number}: {unit_name}",
                             "Key Vocabulary Words": key_words_formatted,
@@ -130,13 +110,10 @@ def search_units(query, df, columns_to_search):
 
 # Display search results
 if query:
-    is_theme_search = query.lower().startswith("theme is")  # Check for theme search condition here
     results = search_units(query, df, columns_to_search)
     if results:
         st.write("### Search Results:")
         df_results = pd.DataFrame(results)
-        if is_theme_search:
-            df_results = df_results.drop(columns=["Skill Type"])  # Remove Skill Type column for theme searches
         st.dataframe(df_results.style.set_properties(**{'white-space': 'pre-wrap'}), hide_index=True, use_container_width=True)  # Auto-adjust width, hide index, format list
     else:
         st.write("No relevant units found. Try a different topic or learning objective.")
