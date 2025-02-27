@@ -74,4 +74,16 @@ def search_units(query, df, columns_to_search):
                         "RH Level": rh_level,
                         "Unit Number: Unit Name": f"{unit_number}: {unit_name}",
                         "Key Vocabulary Words": key_words_formatted
-      
+                    })
+    
+    return results[:5]  # Limit to top 5 results
+
+# Display search results
+if query:
+    results = search_units(query, df, columns_to_search)
+    if results:
+        st.write("### Search Results:")
+        df_results = pd.DataFrame(results)
+        st.dataframe(df_results.style.set_properties(**{'white-space': 'pre-wrap'}), hide_index=True, use_container_width=True)  # Auto-adjust width, hide index, format list
+    else:
+        st.write("No relevant units found. Try a different topic or learning objective.")
