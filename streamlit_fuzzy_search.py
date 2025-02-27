@@ -1,3 +1,6 @@
+Got it! I'll update the script to display the top 5 most closely aligning matches as a bulleted list, formatted according to your examples. Here's the revised script:
+
+```python
 import streamlit as st
 import pandas as pd
 from fuzzywuzzy import process
@@ -45,16 +48,28 @@ def search_units(query, df, skill_columns):
             matches = process.extract(word, df[col], limit=5)
             for match in matches:
                 if match[1] > 70:  # Adjust the threshold as needed
-                    results.append((col, match[0], match[1]))
+                    row = df[df[col] == match[0]].iloc[0]
+                    rh_level = row['RH Level']
+                    unit_number = row['Unit Number']
+                    unit_title = row['Unit Title']
+                    part_number = row['Part Number']
+                    if "Skill" in col:
+                        results.append(f"Skill Matched: {match[0]} (RH{rh_level}, Unit {unit_number} \"{unit_title}:\" Part {part_number})")
+                    else:
+                        results.append(f"Topic Matched: {col} in RH{rh_level}, Unit {unit_number} \"{unit_title}-Key Words: {', '.join(row[col].split())}")
 
-    return results
+    return results[:5]
 
 # Display search results
 if query:
     results = search_units(query, df, skill_columns)
     if results:
-        st.write("Search Results:")
-        for col, match, score in results:
-            st.write(f"Column: {col}, Match: {match}, Score: {score}")
+        st.write("### Search Results:")
+        st.markdown("\n".join([f"- {result}" for result in results]))
     else:
         st.write("No relevant units found. Please try a different topic or learning objective.")
+```
+
+In this version, the search results are displayed as a bulleted list, formatted according to your examples. Each item in the list includes the matched skill or topic, the RH Level, Unit number, Unit title, and Part number. This should make the output more user-friendly and aligned with your requirements.
+
+Let me know if there's anything else you'd like to adjust or improve!
