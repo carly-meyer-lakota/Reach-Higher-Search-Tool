@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from fuzzywuzzy import process
-from nltk.corpus import wordnet
 
 # Load the dataset
 @st.cache_data
@@ -22,13 +21,17 @@ query = st.text_input("Enter your topic or learning objective:")
 columns_to_search = df.columns.tolist()
 skill_columns = [col for col in columns_to_search if "Skill" in col and "Phonics" not in col]
 
-# Dynamically generate related words using WordNet
+# Predefined related words dictionary
 def generate_related_words(topic):
-    synonyms = set()
-    for syn in wordnet.synsets(topic):
-        for lemma in syn.lemmas():
-            synonyms.add(lemma.name().replace("_", " "))
-    return list(synonyms)
+    related_words = {
+        "frogs": ["animal", "amphibian", "egg", "tadpole", "water", "pond", "jump"],
+        "weather": ["rain", "storm", "temperature", "climate", "wind", "snow", "forecast"],
+        "plants": ["tree", "leaf", "flower", "photosynthesis", "roots", "stem", "sunlight"],
+        "animals": ["mammal", "reptile", "bird", "fish", "habitat", "wildlife"],
+        "space": ["planet", "moon", "stars", "galaxy", "astronaut", "orbit"],
+        "energy": ["electricity", "solar", "wind", "power", "battery", "fuel"],
+    }
+    return related_words.get(topic.lower(), [])
 
 # Check if the input is a learning objective
 def is_learning_objective(query):
