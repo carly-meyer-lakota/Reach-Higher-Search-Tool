@@ -72,14 +72,19 @@ def fuzzy_search(query):
             avg_score = sum(match_scores) / len(match_scores)
             results.append((avg_score, best_skill_match, row.get("RH Level", "N/A"), row.get("Unit", "N/A"), vocab_match))
     
-    return sorted(results, reverse=True, key=lambda x: x[0]), learning_objective
+    return sorted(results, reverse=True, key=lambda x: x[0]), learning_objective, related_words
 
 # Display results
 if query:
-    matches, learning_objective = fuzzy_search(query)
+    matches, learning_objective, related_words = fuzzy_search(query)
     if matches:
         st.subheader("Top 5 Relevant Curriculum Matches:")
         match_list = []
+        
+        if related_words:
+            match_list.append("**Words Related to Your Search that were used to generate this list:**")
+            match_list.extend([f"  - {word}" for word in related_words])
+            match_list.append("")
         
         if learning_objective:
             # Learning Objective Search Output
@@ -92,10 +97,7 @@ if query:
             for match in matches[:5]:
                 avg_score, _, level, unit, vocab = match
                 match_list.append(f"- **RH Level:** {level}, **Unit:** {unit}")
-                match_list.append("  **Vocabulary Words from the RH Unit:**")
                 match_list.extend([f"  - {word.strip()}" for word in vocab])
-                match_list.append("  **Words Related to Your Search that were used to generate this list:**")
-                match_list.extend([f"  - {word}" for word in generate_related_words(query)])
         
         st.markdown("\n".join(match_list))
     else:
