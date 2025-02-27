@@ -37,14 +37,22 @@ def generate_related_words(word):
             synonyms.add(lemma.name().replace("_", " "))  # Replace underscores in multi-word phrases
     return list(synonyms)
 
+# Function to generate theme title from vocabulary words
+def generate_theme_title(vocabulary_words):
+    # Combine the vocabulary words and generate a title (e.g., by joining them or selecting key words)
+    # For simplicity, we'll join the first few vocabulary words to create a title
+    theme_title = ", ".join(vocabulary_words[:3])  # Limit to first 3 vocabulary words
+    return theme_title
+
 # Search function using fuzzy matching with WordNet synonyms and relevance scoring
 def search_units(query, df, columns_to_search):
     related_words = generate_related_words(query)
     all_words = [query] + related_words  # Include query and its synonyms
     results = []
 
-    # Check if query starts with "Students will"
+    # Check if query starts with "Students will" or "theme is"
     exclude_unit_name = query.lower().startswith("students will")
+    is_theme_search = query.lower().startswith("theme is")
 
     for word in all_words:
         for col in columns_to_search:
@@ -60,13 +68,12 @@ def search_units(query, df, columns_to_search):
                     rh_level = row.get('RH Level', 'N/A')
                     unit_number = row.get('Unit Number', 'N/A')  # Ensure correct column name
                     unit_name = row.get('Unit Name', 'N/A')
-                    key_words = row.get('Vocabulary Words', 'N/A')
+                    key_words = row.get('Vocabulary Words', 'N/A').split(', ') if row.get('Vocabulary Words', 'N/A') != 'N/A' else []
                     skill_matched = match[0]  # Extract the actual matched skill
                     skill_type = col  # Store the column name as Skill Type
 
                     # Format key vocabulary words as a bulleted list
-                    key_words_list = key_words.split(', ') if key_words != 'N/A' else []
-                    key_words_formatted = "\n".join([f"- {word}" for word in key_words_list])
+                    key_words_formatted = "\n".join([f"- {word}" for word in key_words])
 
                     # Assign a relevance score based on the column type and match strength
                     score = match[1]
@@ -75,14 +82,26 @@ def search_units(query, df, columns_to_search):
                     elif 'Skill' in col:  # Weight skill matches more heavily for concepts
                         score *= 1.2
 
-                    results.append({
-                        "Concept/Topic Matched": skill_matched,
-                        "Skill Type": skill_type,
-                        "RH Level": rh_level,
-                        "Unit Number: Unit Name": f"{unit_number}: {unit_name}",
-                        "Key Vocabulary Words": key_words_formatted,
-                        "Relevance Score": score
-                    })
+                    # If it's a theme search, generate a theme title instead of using the vocabulary words in the "Concept/Topic Matched" column
+                    if is_theme_search:
+                        theme_title = generate_theme_title(key_words)
+                        results.append({
+                            "Theme": theme_title,
+                            "Skill Type": skill_type,
+                            "RH Level": rh_level,
+                            "Unit Number: Unit Name": f"{unit_number}: {unit_name}",
+                            "Key Vocabulary Words": key_words_formatted,
+                            "Relevance Score": score
+                        })
+                    else:
+                        results.append({
+                            "Concept/Topic Matched": skill_matched,
+                            "Skill Type": skill_type,
+                            "RH Level": rh_level,
+                            "Unit Number: Unit Name": f"{unit_number}: {unit_name}",
+                            "Key Vocabulary Words": key_words_formatted,
+                            "Relevance Score": score
+                        })
     
     # Sort results by relevance score in descending order
     sorted_results = sorted(results, key=lambda x: x['Relevance Score'], reverse=True)
