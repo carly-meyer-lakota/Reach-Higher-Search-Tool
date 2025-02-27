@@ -65,8 +65,8 @@ def fuzzy_search(query):
                             exact_match_found = True
                         elif score > best_skill_match[1] and not exact_match_found:
                             best_skill_match = (col, score, row[col])
-                    elif col == "Vocabulary Words":
-                        vocab_match.append(score[0])
+                    elif col == "Vocabulary Words" and score:
+                        vocab_match.append(score[0] if isinstance(score, tuple) else row[col])
         
         if match_scores:
             avg_score = sum(match_scores) / len(match_scores)
