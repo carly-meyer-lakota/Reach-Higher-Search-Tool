@@ -1,6 +1,3 @@
-Got it! I'll update the script to display the top 5 most closely aligning matches as a bulleted list, formatted according to your examples. Here's the revised script:
-
-```python
 import streamlit as st
 import pandas as pd
 from fuzzywuzzy import process
@@ -68,8 +65,3 @@ if query:
         st.markdown("\n".join([f"- {result}" for result in results]))
     else:
         st.write("No relevant units found. Please try a different topic or learning objective.")
-```
-
-In this version, the search results are displayed as a bulleted list, formatted according to your examples. Each item in the list includes the matched skill or topic, the RH Level, Unit number, Unit title, and Part number. This should make the output more user-friendly and aligned with your requirements.
-
-Let me know if there's anything else you'd like to adjust or improve!
