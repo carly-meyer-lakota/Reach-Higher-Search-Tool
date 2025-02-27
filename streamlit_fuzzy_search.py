@@ -51,7 +51,7 @@ def search_units(query, df, columns_to_search):
                     row = df[df[col] == match[0]].iloc[0]  # Select the first matching row
 
                     rh_level = row.get('RH Level', 'N/A')
-                    unit_number = row.get('Unit', 'N/A')
+                    unit_number = row.get('Unit Number', 'N/A')  # Ensure correct column name
                     unit_name = row.get('Unit Name', 'N/A')
                     key_words = row.get('Vocabulary Words', 'N/A')
                     skill_matched = match[0]  # Extract the actual matched skill
@@ -70,6 +70,7 @@ if query:
     results = search_units(query, df, columns_to_search)
     if results:
         st.write("### Search Results:")
-        st.dataframe(pd.DataFrame(results).set_index("Matched Concept/Topic"))  # Display results in a table without index column
+        df_results = pd.DataFrame(results).set_index("Matched Concept/Topic")
+        st.dataframe(df_results.style.set_properties(**{'width': '100%', 'white-space': 'normal'}))  # Auto-adjust column width
     else:
         st.write("No relevant units found. Try a different topic or learning objective.")
