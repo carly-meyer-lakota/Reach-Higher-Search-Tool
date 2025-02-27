@@ -8,12 +8,46 @@ from fuzzywuzzy import process
 nltk.download('wordnet')
 nltk.download('omw-1.4')
 
+# Define a mapping of common vocabulary-related topics to categories
+topic_map = {
+    "Business": ["advertisement", "buyer", "market", "money", "pay", "seller", "investment", "profit", "trade", "commerce"],
+    "Environment": ["plant", "animal", "ecosystem", "climate", "environment", "habitat", "conservation", "sustainability", "biodiversity"],
+    "Technology": ["computer", "internet", "technology", "innovation", "digital", "data", "robot", "software", "AI", "cybersecurity"],
+    "Society": ["community", "society", "culture", "government", "law", "education", "history", "rights", "social", "policy"],
+    "Science": ["experiment", "research", "theory", "hypothesis", "chemistry", "biology", "physics", "astronomy", "geology"],
+    "Arts": ["painting", "sculpture", "music", "theater", "design", "creative", "expression", "gallery", "literature", "dance"],
+    "Health": ["medicine", "doctor", "patient", "illness", "treatment", "health", "wellness", "prevention", "nutrition", "fitness"],
+    "Sports": ["football", "basketball", "tennis", "cricket", "athletics", "competition", "team", "coach", "tournament", "league"],
+    "Travel": ["destination", "journey", "adventure", "tourism", "explore", "vacation", "trip", "itinerary", "culture", "landmark"]
+}
+
+# Function to generate theme title from vocabulary words
+def generate_theme_title(vocabulary_words):
+    # Flatten the vocabulary words and map them to a category if possible
+    vocabulary_words_lower = [word.lower() for word in vocabulary_words]
+    
+    # Try to match the vocabulary words with predefined topics
+    matched_topics = []
+    for topic, keywords in topic_map.items():
+        if any(keyword in vocabulary_words_lower for keyword in keywords):
+            matched_topics.append(topic)
+    
+    # If no matches, return a general 'Theme' based on key vocabulary terms
+    if not matched_topics:
+        return ", ".join(vocabulary_words[:3])  # Default theme is the first few words
+    
+    return ", ".join(matched_topics)  # Return the matched topic(s)
+
 # Load the dataset
 @st.cache_data
 def load_data():
     file_path = "reach_higher_curriculum_all_units.csv"
     df = pd.read_csv(file_path)
     df.columns = df.columns.str.strip()  # Remove leading/trailing spaces
+    
+    # Generate theme titles for each row in the 'Vocabulary Words' column
+    df['Theme Title'] = df['Vocabulary Words'].apply(lambda x: generate_theme_title(x.split(', ')))
+    
     return df.fillna('')  # Replace NaN with empty strings for searching
 
 df = load_data()
@@ -36,13 +70,6 @@ def generate_related_words(word):
         for lemma in syn.lemmas():
             synonyms.add(lemma.name().replace("_", " "))  # Replace underscores in multi-word phrases
     return list(synonyms)
-
-# Function to generate theme title from vocabulary words
-def generate_theme_title(vocabulary_words):
-    # Combine the vocabulary words and generate a title (e.g., by joining them or selecting key words)
-    # For simplicity, we'll join the first few vocabulary words to create a title
-    theme_title = ", ".join(vocabulary_words[:3])  # Limit to first 3 vocabulary words
-    return theme_title
 
 # Search function using fuzzy matching with WordNet synonyms and relevance scoring
 def search_units(query, df, columns_to_search):
