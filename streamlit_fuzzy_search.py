@@ -40,20 +40,25 @@ def fuzzy_search(query, search_type):
     for index, row in df.iterrows():
         match_scores = []
         best_skill_match = (None, 0, "")
-        
+        exact_match_found = False
+
         for col in columns_to_search:
             for term in search_terms:
                 score = process.extractOne(term, str(row[col]).split(','), score_cutoff=70)
                 if score:
                     match_scores.append(score[1])
                     
-                    if search_type == "Learning Objective" and col in skill_columns and score[1] > best_skill_match[1]:
-                        best_skill_match = (col, score[1], score[0])
+                    if search_type == "Learning Objective" and col in skill_columns:
+                        if term.lower() in str(row[col]).lower():
+                            best_skill_match = (col, 100, row[col])  # Exact match
+                            exact_match_found = True
+                        elif score[1] > best_skill_match[1] and not exact_match_found:
+                            best_skill_match = (col, score[1], score[0])
         
         if match_scores:
             avg_score = sum(match_scores) / len(match_scores)
             if search_type == "Learning Objective" and best_skill_match[2]:
-                results.append((avg_score, f"{best_skill_match[0]}: {best_skill_match[2]}", row.get("RH Level", "N/A"), row.get("Unit", "N/A")))
+                results.append((best_skill_match[1], f"{best_skill_match[0]}: {best_skill_match[2]}", row.get("RH Level", "N/A"), row.get("Unit", "N/A")))
             elif search_type == "Topic":
                 results.append((avg_score, "", row.get("RH Level", "N/A"), row.get("Unit", "N/A"), row.get("Vocabulary Words", "N/A")))
     
