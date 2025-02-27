@@ -57,9 +57,9 @@ def search_units(query, df, columns_to_search):
                     skill_matched = match[0]  # Extract the actual matched skill
 
                     results.append({
+                        "Matched Concept/Topic": skill_matched,
                         "RH Level": rh_level,
                         "Unit": f"{unit_number}: {unit_name}",
-                        "Matched Concept/Topic": skill_matched,
                         "Key Vocabulary Words": key_words
                     })
     
@@ -70,6 +70,6 @@ if query:
     results = search_units(query, df, columns_to_search)
     if results:
         st.write("### Search Results:")
-        st.dataframe(pd.DataFrame(results))  # Display results in a table
+        st.dataframe(pd.DataFrame(results).set_index("Matched Concept/Topic"))  # Display results in a table without index column
     else:
         st.write("No relevant units found. Try a different topic or learning objective.")
