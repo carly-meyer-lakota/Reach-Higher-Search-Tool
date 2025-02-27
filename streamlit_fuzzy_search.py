@@ -56,18 +56,13 @@ def search_units(query, df, columns_to_search):
                     key_words = row.get('Vocabulary Words', 'N/A')
                     skill_matched = match[0]  # Extract the actual matched skill
 
-                    if col in skill_columns:  
-                        result_text = (
-                            f"**Concept Matched**: [{skill_matched}] in RH{rh_level}, Unit {unit_number} \"{unit_name}\""
-                        )
-                    else:
-                        result_text = (
-                            f"**Topic Matched**: [{skill_matched}] in RH{rh_level}, Unit {unit_number} \"{unit_name}\""
-                            f"\n- **Key Words**: {key_words}"
-                        )
-                    
-                    results.append(result_text)
-
+                    results.append({
+                        "RH Level": rh_level,
+                        "Unit": f"{unit_number}: {unit_name}",
+                        "Matched Concept/Topic": skill_matched,
+                        "Key Vocabulary Words": key_words
+                    })
+    
     return results[:5]  # Limit to top 5 results
 
 # Display search results
@@ -75,6 +70,6 @@ if query:
     results = search_units(query, df, columns_to_search)
     if results:
         st.write("### Search Results:")
-        st.markdown("\n".join([f"- {result}" for result in results]))
+        st.dataframe(pd.DataFrame(results))  # Display results in a table
     else:
         st.write("No relevant units found. Try a different topic or learning objective.")
