@@ -43,7 +43,11 @@ def has_exact_match(query, df, columns_to_search):
     exact_matches = {}
 
     for col in columns_to_search:
-        col_values = df[col].dropna().str.lower()  # Work with lowercase values
+        if df[col].dtype == 'object':  # Only process if the column is of type object (string)
+            col_values = df[col].dropna().str.lower()  # Work with lowercase values
+        else:
+            col_values = df[col].dropna().astype(str).str.lower()  # Convert numeric or other types to string
+
         for value in col_values:
             value_words = set(value.split())  # Get individual words from the column value
             if query_words & value_words:  # If there's an intersection of words
