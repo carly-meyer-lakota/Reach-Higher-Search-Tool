@@ -3,7 +3,7 @@ import pandas as pd
 from fuzzywuzzy import process
 
 # Load the dataset
-@st.cache_datacache_data
+@st.cache_data
 def load_data():
     file_path = "reach higher curriculum all units.csv"
     return pd.read_csv(file_path)
