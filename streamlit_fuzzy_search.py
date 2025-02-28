@@ -1,81 +1,124 @@
 import streamlit as st
 import pandas as pd
 from fuzzywuzzy import fuzz
-from fuzzywuzzy import process
+from nltk.corpus import wordnet as wn
+from collections import defaultdict
 
-# Function to load data with caching
-@st.cache_data
+# Load CSV file
+@st.cache
 def load_data():
-    return pd.read_csv("reach_higher_curriculum_all_units.csv")
+    return pd.read_csv("reach higher curriculum all units.csv")
 
-# Load the data
 data = load_data()
 
-# Function to generate theme title from vocabulary words
+# Predefined topic map for thematic titles
+topic_map = {
+    "action, difference, gift, problem, receive, solution, kindness, need, understand, value, want": "Making an Impact",
+    "improve, individual, neighborhood, offer, volunteer, benefit, duty, identify, impact, learn": "Community Growth",
+    "amount, behavior, decrease, increase, supply, balance, control, interact, react, scarce": "Resource Management",
+    "drought, ecosystem, food chain, level, river, competition, nature, negative, positive, resources": "Environmental Conservation",
+    # Add all other topics similarly...
+}
+
+# Generate thematic title from the topic map
 def generate_theme_title(vocabulary_words):
-    # Define a mapping of common vocabulary-related topics to categories
-    topic_map = {
-        "Economy": ["advertisement", "buyer", "market", "money", "pay", "seller", "reward", "cooperation", "plenty", "purpose", "accomplish"],
-        "Nature": ["plant", "animal", "ecosystem", "climate", "environment", "habitat", "growth", "species"],
-        "Technology": ["computer", "internet", "technology", "innovation", "digital", "data", "robot", "software"],
-        "Society": ["community", "society", "culture", "government", "law", "education", "history", "rights"],
-        "Science": ["experiment", "research", "theory", "hypothesis", "chemistry", "biology", "physics", "formula"],
-        "Art": ["painting", "sculpture", "music", "theater", "design", "creative", "expression", "gallery"],
-        "Health": ["medicine", "doctor", "patient", "illness", "treatment", "health", "wellness", "prevention"]
-    }
-    
-    # Flatten the vocabulary words and map them to a category if possible
-    vocabulary_words_lower = [word.lower() for word in vocabulary_words]
-    
-    # Try to match the vocabulary words with predefined topics
-    matched_topics = []
-    for topic, keywords in topic_map.items():
-        if any(keyword in vocabulary_words_lower for keyword in keywords):
-            matched_topics.append(topic)
-    
-    # If no matches, return a general "Theme" based on key vocabulary terms
-    if not matched_topics:
-        return ", ".join(vocabulary_words[:3])  # Default theme is the first few words
-    
-    return ", ".join(matched_topics)  # Return the matched topic(s)
+    # Join vocabulary words and check against the topic map
+    vocabulary_set = set(vocabulary_words.lower().split(", "))
+    for key, title in topic_map.items():
+        topic_set = set(key.lower().split(", "))
+        if vocabulary_set & topic_set:
+            return title
+    return "General Curriculum"
 
-# Fuzzy search function to find the most relevant match
-def fuzzy_search(query, column):
-    matches = process.extract(query, data[column], scorer=fuzz.token_sort_ratio)
-    return matches
+# Check if the search is for a theme
+def is_theme_search(query):
+    return any(word in query.lower() for word in ["theme", "topic"])
 
-# Streamlit app
-def app():
-    st.title('Reach Higher Curriculum Search Tool')
-    
-    # User input for topic or concept search
-    search_type = st.radio("Select Search Type", ("Topic", "Concept"))
-    search_query = st.text_input(f"Enter a {search_type} to Search:")
-    
-    if search_query:
-        # Based on the search type, select the relevant column(s) to search
-        if search_type == "Topic":
-            search_column = "Vocabulary Words"
-            st.write("Searching topics... Please wait.")
-        elif search_type == "Concept":
-            search_column = "Thinking Map Skill"
-            st.write("Searching concepts... Please wait.")
-        
-        # Perform fuzzy search and show top matches
-        matches = fuzzy_search(search_query, search_column)
-        
-        st.subheader("Top Matches:")
-        
-        for match in matches[:5]:  # Show top 5 matches
-            match_data = match[0]
-            match_score = match[1]
-            theme_title = generate_theme_title(match_data.split(", "))  # Generate theme title from vocabulary words
-            
-            st.write(f"**Match:** {match_data}")
-            st.write(f"**Score:** {match_score}")
-            st.write(f"**Theme Title:** {theme_title}")
-            st.write("---")
+# Check if the search is for a concept/topic
+def is_concept_search(query):
+    return any(word in query.lower() for word in ["concept", "student learning objective", "objective"])
 
-# Run the app
-if __name__ == "__main__":
-    app()
+# Expand query using synonyms from WordNet
+def expand_query_with_synonyms(query):
+    synonyms = set()
+    for syn in wn.synsets(query):
+        for lemma in syn.lemmas():
+            synonyms.add(lemma.name())
+    return synonyms
+
+# Calculate relevance score based on fuzzy matching
+def calculate_relevance_score(query, text):
+    return fuzz.partial_ratio(query.lower(), text.lower())
+
+# Perform the search based on the search type
+def perform_search(query, search_type):
+    results = []
+    
+    # Perform search based on theme or concept/topic
+    if search_type == "theme":
+        for idx, row in data.iterrows():
+            vocabulary_words = row['Vocabulary Words']
+            theme_title = generate_theme_title(vocabulary_words.split(", "))
+            relevance_score = calculate_relevance_score(query, vocabulary_words)
+            results.append({
+                'RH Level': row['RH Level'],
+                'Unit Name': row['Unit'],
+                'Theme Match': theme_title,
+                'Vocabulary Words': vocabulary_words,
+                'Relevance Score': relevance_score
+            })
+    
+    elif search_type == "concept":
+        for idx, row in data.iterrows():
+            # Check skill columns for relevance
+            skills_columns = ['Language Skill', 'Reading Skill', 'Phonics Skill', 'Grammar Skill', 'Thinking Map Skill', 'Project']
+            for col in skills_columns:
+                if pd.notna(row[col]):
+                    relevance_score = calculate_relevance_score(query, row[col])
+                    results.append({
+                        'Skill Type': col,
+                        'Skill': row[col],
+                        'RH Level': row['RH Level'],
+                        'Unit Name': row['Unit'],
+                        'Relevance Score': relevance_score
+                    })
+    
+    # Sort results by relevance score in descending order
+    results = sorted(results, key=lambda x: x['Relevance Score'], reverse=True)
+    
+    return results
+
+# Streamlit UI
+st.title("Search the Reach Higher Curriculum")
+st.markdown("""
+    **Tips for Searching:**
+    - **Theme Search**: Enter broad themes like "Space Exploration" or "Environmental Conservation" to find units related to these topics.
+    - **Concept/Student Learning Objective Search**: Enter specific learning objectives or skills such as "Write a Persuasive Essay" or "Understand Ecosystems."
+    - Use keywords from the curriculum or related terms for more relevant results.
+""")
+
+query = st.text_input("Enter your search query")
+
+search_type = "theme" if is_theme_search(query) else "concept" if is_concept_search(query) else "concept"
+
+results = perform_search(query, search_type)
+
+# Display results based on search type
+if results:
+    if search_type == "theme":
+        st.subheader("Theme Search Results")
+        st.write("Displaying results sorted by relevance.")
+        # Display results as a table for theme search
+        results_df = pd.DataFrame(results)
+        results_df = results_df[['RH Level', 'Unit Name', 'Theme Match', 'Vocabulary Words']]
+        st.dataframe(results_df)
+    
+    elif search_type == "concept":
+        st.subheader("Student Learning Objective Search Results")
+        st.write("Displaying results sorted by relevance.")
+        # Display results as a table for concept search
+        results_df = pd.DataFrame(results)
+        results_df = results_df[['Skill Type', 'Skill', 'RH Level', 'Unit Name']]
+        st.dataframe(results_df)
+else:
+    st.write("No results found.")
