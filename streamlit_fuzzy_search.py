@@ -66,11 +66,15 @@ def search_units(query, df, columns_to_search, search_type):
             for match in matches:
                 if match[1] > 70:
                     row = df[df[col] == match[0]].iloc[0]
+                    unit_name = row.get('Unit Name', '')
+                    unit_number = row.get('Unit', '')
+                    full_unit_name = f"{unit_number}: {unit_name}".strip(': ')
+                    
                     results.append({
-                        "Matched Term": match[0],
                         "Skill Type": col,
                         "RH Level": row.get('RH Level', 'N/A'),
-                        "Unit Name": f"{row.get('Unit', 'N/A')}: {row.get('Unit Name', 'N/A')}",
+                        "Unit Number": unit_number,
+                        "Unit Name": full_unit_name,
                         "Language Skill": row.get('Language Skill', 'N/A'),
                         "Reading Skill": row.get('Reading Skill', 'N/A'),
                         "Vocabulary Words": row.get('Vocabulary Words', 'N/A'),
