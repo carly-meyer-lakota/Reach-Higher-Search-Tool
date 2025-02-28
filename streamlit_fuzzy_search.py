@@ -1,87 +1,94 @@
-
 import streamlit as st
 import pandas as pd
-from fuzzywuzzy import fuzz
-from nltk.corpus import wordnet as wn
-from collections import defaultdict
+import nltk
+from nltk.corpus import wordnet
+from fuzzywuzzy import process
 
-# Load CSV file
-@st.cache
+# Ensure necessary NLTK resources are available
+nltk.download('wordnet')
+nltk.download('omw-1.4')
+
+# Load the dataset
+@st.cache_data
 def load_data():
-    return pd.read_csv("reach higher curriculum all units.csv")
+    file_path = "reach_higher_curriculum_all_units.csv"
+    df = pd.read_csv(file_path)
+    df.columns = df.columns.str.strip()  # Remove leading/trailing spaces
+    return df.fillna('')  # Replace NaN with empty strings for searching
 
-data = load_data()
+df = load_data()
 
-# Predefined topic map for thematic titles
-topic_map = {
-    "action, difference, gift, problem, receive, solution, kindness, need, understand, value, want": "Making an Impact",
-    "improve, individual, neighborhood, offer, volunteer, benefit, duty, identify, impact, learn": "Community Growth",
-    "amount, behavior, decrease, increase, supply, balance, control, interact, react, scarce": "Resource Management",
-    "drought, ecosystem, food chain, level, river, competition, nature, negative, positive, resources": "Environmental Conservation",
-    # Add all other topics similarly...
-}
+# Streamlit UI Setup
+st.set_page_config(page_title="Reach Higher Search", layout="wide")
 
-# Generate thematic title from the topic map
-def generate_theme_title(vocabulary_words):
-    # Join vocabulary words and check against the topic map
-    vocabulary_set = set(vocabulary_words.lower().split(", "))
-    for key, title in topic_map.items():
-        topic_set = set(key.lower().split(", "))
-        if vocabulary_set & topic_set:
-            return title
-    return "General Curriculum"
+st.title("🔍 Reach Higher Curriculum Search")
+st.write("Find relevant units and parts for your teaching topics or learning objectives.")
 
-# Check if the search is for a theme
-def is_theme_search(query):
-    return any(word in query.lower() for word in ["theme", "topic"])
+# Sidebar for user input
+with st.sidebar:
+    st.header("Search Settings")
+    query = st.text_input("Enter a topic or concept:")
+    search_type = st.radio("Select Search Type:", ["Topic Search", "Concept Search"])
+    
+    st.markdown("""
+    **How to Search:**
+    - Enter a **topic** (e.g., "climate change") to find relevant **vocabulary-heavy** results.
+    - Enter a **concept** (e.g., "cause and effect") to find relevant **skill-based** results.
+    """)
 
-# Check if the search is for a concept/topic
-def is_concept_search(query):
-    return any(word in query.lower() for word in ["concept", "topic"])
+# Define relevant columns
+columns_to_search = df.columns.tolist()  
+skill_columns = [col for col in columns_to_search if "Skill" in col and "Phonics" not in col]
 
-# Expand query using synonyms from WordNet
-def expand_query_with_synonyms(query):
+# Function to generate synonyms using WordNet
+def generate_related_words(word):
     synonyms = set()
-    for syn in wn.synsets(query):
+    for syn in wordnet.synsets(word):
         for lemma in syn.lemmas():
-            synonyms.add(lemma.name())
-    return synonyms
+            synonyms.add(lemma.name().replace("_", " "))  # Replace underscores in multi-word phrases
+    return list(synonyms)
 
-# Calculate relevance score based on fuzzy matching
-def calculate_relevance_score(query, text):
-    return fuzz.partial_ratio(query.lower(), text.lower())
-
-# Perform the search based on the search type
-def perform_search(query, search_type):
+# Search function using fuzzy matching
+def search_units(query, df, columns_to_search, search_type):
+    related_words = generate_related_words(query)
+    all_words = [query] + related_words  # Include query and its synonyms
     results = []
-    
-    # Perform search based on theme or concept/topic
-    if search_type == "theme":
-        for idx, row in data.iterrows():
-            vocabulary_words = row['Vocabulary Words']
-            theme_title = generate_theme_title(vocabulary_words.split(", "))
-            relevance_score = calculate_relevance_score(query, vocabulary_words)
-            results.append({
-                'Theme': theme_title,
-                'RH Level': row['RH Level'],
-                'Unit Name': row['Unit'],
-                'Vocabulary Words': vocabulary_words,
-                'Relevance Score': relevance_score
-            })
-    
-    elif search_type == "concept":
-        for idx, row in data.iterrows():
-            # Check skill columns for relevance
-            skills_columns = ['Language Skill', 'Reading Skill', 'Phonics Skill', 'Grammar Skill', 'Thinking Map Skill', 'Project']
-            for col in skills_columns:
-                if pd.notna(row[col]):
-                    relevance_score = calculate_relevance_score(query, row[col])
+
+    for word in all_words:
+        for col in columns_to_search:
+            if search_type == "Concept Search" and col not in skill_columns:
+                continue  # Prioritize skill-based columns for Concept Search
+            if search_type == "Topic Search" and "Vocabulary" not in col:
+                continue  # Prioritize vocabulary-heavy columns for Topic Search
+            
+            matches = process.extract(word, df[col].dropna(), limit=5)
+            for match in matches:
+                if match[1] > 70:  # Only consider strong matches
+                    row = df[df[col] == match[0]].iloc[0]  # Select the first matching row
+
                     results.append({
-                        'RH Level': row['RH Level'],
-                        'Unit Name': row['Unit'],
-                        'Skill Type': col,
-                        'Specific Skill Matched': row[col],
-                        'Relevance Score': relevance_score
+                        "Concept/Topic Matched": match[0],
+                        "Skill Type": col,
+                        "RH Level": row.get('RH Level', 'N/A'),
+                        "Unit Number & Name": f"{row.get('Unit', 'N/A')}: {row.get('Unit Name', 'N/A')}",
+                        "Key Vocabulary Words": row.get('Vocabulary Words', 'N/A'),
+                        "Relevance Score": match[1]
                     })
-    
-    # Sort results by relevance score in descendi
+
+    sorted_results = sorted(results, key=lambda x: x['Relevance Score'], reverse=True)
+    return sorted_results[:5]  # Limit to top 5 results
+
+# Display search results
+if query:
+    results = search_units(query, df, columns_to_search, search_type)
+    if results:
+        st.subheader("🔎 Search Results")
+        
+        for result in results:
+            with st.expander(f"**{result['Unit Number & Name']}** | {result['RH Level']}"):
+                st.write(f"**Matched:** {result['Concept/Topic Matched']}")
+                st.write(f"**Skill Type:** {result['Skill Type']}")
+                st.write(f"**Vocabulary Words:**\n {result['Key Vocabulary Words']}")
+                st.write(f"🔹 **Relevance Score:** {result['Relevance Score']}")
+    else:
+        st.warning("⚠️ No relevant units found. Try a different topic or concept.")
