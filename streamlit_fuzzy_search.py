@@ -3,7 +3,6 @@ import pandas as pd
 import nltk
 from nltk.corpus import wordnet
 from fuzzywuzzy import process
-import time
 
 # Ensure necessary NLTK resources are available
 nltk.download('wordnet')
@@ -11,10 +10,12 @@ nltk.download('omw-1.4')
 
 # Load the dataset
 @st.cache_data
-def load_data(file_path="reach_higher_curriculum_all_units.csv"):
-    df = pd.read_csv(file_path)
+def load_data():
+    df = pd.read_csv("reach_higher_curriculum_all_units.csv")
     df.columns = df.columns.str.strip()  # Remove leading/trailing spaces
     return df.fillna('')  # Replace NaN with empty strings for searching
+
+df = load_data()
 
 # Streamlit UI Setup
 st.set_page_config(page_title="Reach Higher Search", layout="wide")
@@ -26,22 +27,12 @@ with st.sidebar:
     st.header("Search Settings")
     query = st.text_input("Enter a topic or concept:")
     search_type = st.radio("Select Search Type:", ["Topic Search", "Concept Search"])
-    file_upload = st.file_uploader("Upload CSV", type="csv")
 
     st.markdown("""
     **How to Search:**
     - Enter a **topic** (e.g., "climate change") to find relevant **vocabulary-heavy** results.
     - Enter a **concept** (e.g., "cause and effect") to find relevant **skill-based** results.
     """)
-
-# Handle file upload or default CSV path
-if file_upload:
-    df = pd.read_csv(file_upload)
-    st.success("CSV file uploaded successfully!")
-else:
-    # Default file path if no upload
-    file_path = "reach_higher_curriculum_all_units.csv"
-    df = load_data(file_path)
 
 # Define relevant columns
 columns_to_search = df.columns.tolist()
@@ -90,11 +81,8 @@ if query:
         results = search_units(query, df, columns_to_search, search_type)
         if results:
             st.subheader("🔎 Search Results")
-            for result in results:
-                with st.expander(f"**{result['Unit Name']}** | {result['RH Level']}"):
-                    st.write(f"**Matched:** {result['Matched']}")
-                    st.write(f"**Skill Type:** {result['Skill Type']}")
-                    st.write(f"**Vocabulary Words:**\n {result['Vocabulary Words']}")
-                    st.write(f"🔹 **Relevance Score:** {result['Relevance Score']}")
+            # Convert results to a DataFrame for a table-like display
+            results_df = pd.DataFrame(results)
+            st.table(results_df)  # Display results as a table
         else:
             st.warning("⚠️ No relevant units found. Try a different topic or concept.")
