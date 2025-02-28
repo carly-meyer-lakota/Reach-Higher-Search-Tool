@@ -1,10 +1,9 @@
 import streamlit as st
 import pandas as pd
 from fuzzywuzzy import process, fuzz
-import numpy as np
 
-# Load the CSV file
-@st.cache
+# Load the CSV file from the repository
+@st.cache_data
 def load_data():
     url = 'https://raw.githubusercontent.com/carly-meyer-lakota/Reach-Higher-Alignment-2/main/reach_higher_curriculum_all_units.csv'
     return pd.read_csv(url)
