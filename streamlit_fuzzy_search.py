@@ -8,6 +8,9 @@ from fuzzywuzzy import process
 nltk.download('wordnet')
 nltk.download('omw-1.4')
 
+# Set Streamlit page configuration (must be the first Streamlit command)
+st.set_page_config(page_title="Reach Higher Search", layout="wide")
+
 # Load the dataset
 @st.cache_data
 def load_data():
@@ -18,7 +21,6 @@ def load_data():
 df = load_data()
 
 # Streamlit UI Setup
-st.set_page_config(page_title="Reach Higher Search", layout="wide")
 st.title("🔍 Reach Higher Curriculum Search")
 st.write("Find relevant units and parts for your teaching topics or learning objectives.")
 
