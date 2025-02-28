@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import fuzzywuzzy
 from fuzzywuzzy import fuzz
 from nltk.corpus import wordnet
 import re
@@ -117,3 +116,29 @@ def fuzzy_search(query, vocabulary_words, skill_columns, is_theme_search):
                         "Relevance Score": fuzz.partial_ratio(query, row[col])
                     })
     return search_results
+
+# Streamlit UI
+st.title('Reach Higher Curriculum Search Tool')
+
+query = st.text_input("Enter Search Query:")
+search_type = st.radio("Select Search Type", ("Theme", "Learning Objective"))
+
+if query:
+    st.write("Search Results for: ", query)
+    df = load_data()
+    
+    is_theme = search_type == "Theme"
+    
+    skill_columns = ['Vocabulary Words', 'Skill Type', 'Thinking Map Skill', 'Reading Skill', 'Genres', 'Grammar Skill', 'Project', 'Phonics Skill']
+    
+    results = fuzzy_search(query, df, skill_columns, is_theme)
+    
+    if results:
+        if is_theme:
+            result_df = pd.DataFrame(results)
+            st.table(result_df[["RH Level", "Unit Name", "Theme Match", "Vocabulary Words"]])
+        else:
+            result_df = pd.DataFrame(results)
+            st.table(result_df[["Skill", "Skill Type", "RH Level", "Unit Name", "Relevance Score"]])
+    else:
+        st.write("No matching results found.")
