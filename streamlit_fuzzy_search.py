@@ -97,69 +97,23 @@ def fuzzy_search(query, vocabulary_words, skill_columns, is_theme_search):
     search_results = []
     if is_theme_search:
         for i, row in vocabulary_words.iterrows():
-            vocab_list = row['Vocabulary Words'].split(", ")
-            for vocab in vocab_list:
-                if fuzz.ratio(query, vocab) > 80 or any(fuzz.ratio(query, word) > 80 for word in get_synonyms(query)):
-                    theme_title = generate_theme_title(vocab_list)
+            for vocab in row['Vocabulary Words'].split(", "):
+                if fuzz.partial_ratio(query, vocab) > 70:
                     search_results.append({
-                        "Theme Match": theme_title,
-                        "RH Level": row["RH Level"],
-                        "Unit Name": row["Unit Name"],
-                        "Vocabulary Words": row["Vocabulary Words"]
+                        "RH Level": row['RH Level'],
+                        "Unit Name": row['Unit'],
+                        "Theme Match": generate_theme_title(row['Vocabulary Words'].split(", ")),
+                        "Vocabulary Words": row['Vocabulary Words']
                     })
     else:
-        for i, row in vocabulary_words.iterrows():
-            for skill_column in skill_columns:
-                skill_value = row[skill_column]
-                if fuzz.ratio(query, skill_value) > 80 or any(fuzz.ratio(query, word) > 80 for word in get_synonyms(query)):
+        for col in skill_columns:
+            for i, row in vocabulary_words.iterrows():
+                if fuzz.partial_ratio(query, row[col]) > 70:
                     search_results.append({
-                        "Skill": skill_value,
-                        "Skill Type": skill_column,
-                        "RH Level": row["RH Level"],
-                        "Unit Name": row["Unit Name"],
-                        "Relevance Score": fuzz.ratio(query, skill_value)
+                        "Skill": row[col],
+                        "Skill Type": col,
+                        "RH Level": row['RH Level'],
+                        "Unit Name": row['Unit'],
+                        "Relevance Score": fuzz.partial_ratio(query, row[col])
                     })
     return search_results
-
-# Function to get synonyms of a word using WordNet
-def get_synonyms(word):
-    synonyms = set()
-    for syn in wordnet.synsets(word):
-        for lemma in syn.lemmas():
-            synonyms.add(lemma.name())
-    return list(synonyms)
-
-# App layout
-st.title("Reach Higher Curriculum Search Tool")
-
-# Search Query Input
-query = st.text_input("Enter Search Query:")
-
-# Search Type Selection
-search_type = st.radio("Select Search Type", ("Theme", "Learning Objective"))
-
-# Perform the search based on the type selected
-if query:
-    is_theme = search_type == "Theme"
-    is_concept = search_type == "Learning Objective"
-
-    data = load_data()
-
-    # Determine if the query corresponds to theme or concept search
-    if is_theme:
-        search_results = fuzzy_search(query, data, ["Vocabulary Words"], is_theme_search=query.lower())
-        df = pd.DataFrame(search_results)
-        if not df.empty:
-            df = df[["RH Level", "Unit Name", "Theme Match", "Vocabulary Words"]]
-            st.write(df)
-        else:
-            st.write("No theme matches found.")
-    
-    if is_concept:
-        search_results = fuzzy_search(query, data, ["Thinking Map Skill", "Reading Skill", "Grammar Skill", "Phonics Skill"], is_theme_search=query.lower())
-        df = pd.DataFrame(search_results)
-        if not df.empty:
-            df = df[["Skill", "Skill Type", "RH Level", "Unit Name", "Relevance Score"]]
-            st.write(df)
-        else:
-            st.write("No learning objective matches found.")
