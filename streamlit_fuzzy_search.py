@@ -3,6 +3,7 @@ import pandas as pd
 import nltk
 from nltk.corpus import wordnet
 from fuzzywuzzy import process
+import time
 
 # Ensure necessary NLTK resources are available
 nltk.download('wordnet')
@@ -10,31 +11,43 @@ nltk.download('omw-1.4')
 
 # Load the dataset
 @st.cache_data
-def load_data():
-    df = pd.read_csv("reach_higher_curriculum_all_units.csv")
+def load_data(file_path="reach_higher_curriculum_all_units.csv"):
+    df = pd.read_csv(file_path)
     df.columns = df.columns.str.strip()  # Remove leading/trailing spaces
     return df.fillna('')  # Replace NaN with empty strings for searching
 
-df = load_data()
-
 # Streamlit UI Setup
 st.set_page_config(page_title="Reach Higher Search", layout="wide")
-
 st.title("🔍 Reach Higher Curriculum Search")
 st.write("Find relevant units and parts for your teaching topics or learning objectives.")
 
 # Sidebar for user input
 with st.sidebar:
+    st.header("Search Settings")
     query = st.text_input("Enter a topic or concept:")
     search_type = st.radio("Select Search Type:", ["Topic Search", "Concept Search"])
-    st.markdown("""- **Topic Search**: Focuses on vocabulary-heavy results.
-                  - **Concept Search**: Focuses on skill-based results.""")
+    file_upload = st.file_uploader("Upload CSV", type="csv")
+
+    st.markdown("""
+    **How to Search:**
+    - Enter a **topic** (e.g., "climate change") to find relevant **vocabulary-heavy** results.
+    - Enter a **concept** (e.g., "cause and effect") to find relevant **skill-based** results.
+    """)
+
+# Handle file upload or default CSV path
+if file_upload:
+    df = pd.read_csv(file_upload)
+    st.success("CSV file uploaded successfully!")
+else:
+    # Default file path if no upload
+    file_path = "reach_higher_curriculum_all_units.csv"
+    df = load_data(file_path)
 
 # Define relevant columns
 columns_to_search = df.columns.tolist()
 skill_columns = [col for col in columns_to_search if "Skill" in col and "Phonics" not in col]
 
-# Generate synonyms using WordNet
+# Function to generate synonyms using WordNet
 def generate_related_words(word):
     synonyms = set()
     for syn in wordnet.synsets(word):
@@ -43,6 +56,7 @@ def generate_related_words(word):
     return list(synonyms)
 
 # Search function using fuzzy matching
+@st.cache_data
 def search_units(query, df, columns_to_search, search_type):
     related_words = generate_related_words(query)
     all_words = [query] + related_words
@@ -72,15 +86,15 @@ def search_units(query, df, columns_to_search, search_type):
 
 # Display search results
 if query:
-    results = search_units(query, df, columns_to_search, search_type)
-    if results:
-        st.subheader("🔎 Search Results")
-        for result in results:
-            with st.expander(f"**{result['Unit Name']}** | {result['RH Level']}"):
-                st.write(f"**Matched:** {result['Matched']}")
-                st.write(f"**Skill Type:** {result['Skill Type']}")
-                st.write(f"**Vocabulary Words:**\n {result['Vocabulary Words']}")
-                st.write(f"🔹 **Relevance Score:** {result['Relevance Score']}")
-    else:
-        st.warning("⚠️ No relevant units found. Try a different topic or concept.")
-
+    with st.spinner("Searching..."):
+        results = search_units(query, df, columns_to_search, search_type)
+        if results:
+            st.subheader("🔎 Search Results")
+            for result in results:
+                with st.expander(f"**{result['Unit Name']}** | {result['RH Level']}"):
+                    st.write(f"**Matched:** {result['Matched']}")
+                    st.write(f"**Skill Type:** {result['Skill Type']}")
+                    st.write(f"**Vocabulary Words:**\n {result['Vocabulary Words']}")
+                    st.write(f"🔹 **Relevance Score:** {result['Relevance Score']}")
+        else:
+            st.warning("⚠️ No relevant units found. Try a different topic or concept.")
